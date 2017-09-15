@@ -1,9 +1,9 @@
 # Fanuc Robot Point Translator
 This program converts robot points between 6-axis Fanuc robots with different configurations/environments.
 
-Copying robot programs from one robot to another is easy if they have the same configuration and the workpiece is in the exact same location with respect to each robot. However, if the workpiece location changes from one robot to another (for example, if robot A has to reach one inch farther than robot B to touch the workpiece), it is not possible to directly copy programs between the robots. In addition, some robots may have different configurations or end-of-arm tools.
+Copying robot programs from one robot to another is easy if they have the same configuration and the workpiece is in the exact same location with respect to each robot. However, if the workpiece location changes from one robot to another (for example, if robot A has to reach one inch farther than robot B to touch the workpiece), it is not possible to directly copy programs between the robots. In addition, some robots may have different configurations or end-of-arm tooling with prevents a direct program copy.
 
-This program is my solution to the above problem. Using a static center point (e.g. the center of a turntable) as a reference point, each robot point can be re-defined based on its distance and orientation with respect to this reference point. As long as the workpiece location remains the same with respect to the center point, this method can be used to copy programs from very different robot environments.
+This program is my solution to the above problem. Using a static center point (e.g. the center of a turntable) as a reference point, each robot point can be re-defined based on its location and orientation with respect to this reference point. As long as the workpiece location remains the same with respect to the center point, this method can be used to copy programs from robots with very different environments.
 
 ## Files
 The "program_translator.py" file is the main file, which calls the other files and runs the whole program. The only file not used during normal program execution is "utool_converter.py". This file has many duplicate functions from "point_converter.py" and is used for testing.
