@@ -21,7 +21,7 @@ def boothInfo(booth):
     Euler = {}
 
     # find proper row
-    for row in ws.iter_rows('A4:M{}'.format(ws.max_row)):
+    for row in ws.iter_rows('A4:N{}'.format(ws.max_row)):
         if row[0].value == booth:
             
             # utool set points
@@ -52,8 +52,11 @@ def boothInfo(booth):
 
             # dust collector angle
             dustColAng = row[12].value
+
+            # configuration string
+            configStr = row[13].value
             break
-    return utoolCopy, tblCopy, EulerCopy, dustColLoc, dustColAng
+    return utoolCopy, tblCopy, EulerCopy, dustColLoc, dustColAng, configStr
 
 def curUtool(booth, curUtoolNum):
     # path to excel document

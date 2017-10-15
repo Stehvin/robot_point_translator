@@ -6,11 +6,11 @@ import write_points
 INPUT INFORMATION
 '''
 
-inputPath = r"C:\Users\Example\TPP204.LS"
-outputPath = r"C:\Users\Example\OutputProg.LS"
+inputPath = r"C:\Users\Example\test.ls"
+outputPath = r"C:\Users\Example\OutputTest.ls"
 oldBooth = 10
 newBooth = 11
-newProgUtoolNum = 2
+newProgUtoolNum = 1
 
 '''
 END OF INPUT INFORMATION

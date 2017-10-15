@@ -2,16 +2,16 @@ import re
 
 def makePntsDict(path):
         # set up regular expressions
-        regex_pnt = re.compile('P\[(\d+)(:".*")?\]\{\n')
+        regex_pnt = re.compile('P\[(\d+)(\s?:\s?".*")?\]\s?\{\n')
         regex_UT = re.compile('UT\s:\s(\d{0,2}),')
         regex_UF = re.compile('UF\s:\s(\d{0,2}),')
-        regex_x = re.compile('X\s=\s+(-?\d{0,4}\.\d{3})')
-        regex_y = re.compile('Y\s=\s+(-?\d{0,4}\.\d{3})')
-        regex_z = re.compile('Z\s=\s+(-?\d{0,4}\.\d{3})')
-        regex_w = re.compile('W\s=\s+(-?\d{0,4}\.\d{3})')
-        regex_p = re.compile('P\s=\s+(-?\d{0,4}\.\d{3})')
-        regex_r = re.compile('R\s=\s+(-?\d{0,4}\.\d{3})')
-        regex_e1 = re.compile('E1=\s+(-?\d{0,4}\.\d{3})')
+        regex_x = re.compile('X\s=\s+(-?\d{0,4}\.\d{2,3})')
+        regex_y = re.compile('Y\s=\s+(-?\d{0,4}\.\d{2,3})')
+        regex_z = re.compile('Z\s=\s+(-?\d{0,4}\.\d{2,3})')
+        regex_w = re.compile('W\s=\s+(-?\d{0,4}\.\d{2,3})')
+        regex_p = re.compile('P\s=\s+(-?\d{0,4}\.\d{2,3})')
+        regex_r = re.compile('R\s=\s+(-?\d{0,4}\.\d{2,3})')
+        regex_e1 = re.compile('E1=\s+(-?\d{0,4}\.\d{2,3})')
 
         # initialize points dictionary
         pntsDict = {}

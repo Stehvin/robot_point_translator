@@ -1,6 +1,16 @@
 import math
 import boothSetupInfo
 
+def main():
+        oldPnts = {2: {'uf': 1, 'ut': 1, 'x': -194.62, 'y': -194.41,
+                       'z': 130.67, 'w': 179.08, 'p': 0.08, 'r': 54.64}}
+        oldBooth = 6
+        newBooth = 13
+        newCurUtoolNum = 1
+    
+        newPnts = execute(oldBooth, newBooth, newCurUtoolNum, oldPnts)
+        print(newPnts)
+
 def execute(oldBooth, newBooth, newCurUtoolNum, oldPnts):
         """Execute the point conversion program.
         """
@@ -31,6 +41,10 @@ def execute(oldBooth, newBooth, newCurUtoolNum, oldPnts):
                         # angles
                         pnt = utool_to_world(pnt, oldCurUtool)
                         pnt = world_to_utool(pnt, oldUtool)
+                        print("Old UF0, Gun-tip UTool Coordinates:")
+                        print((pnt['x'], pnt['y'], pnt['z'], pnt['w'],
+                               pnt['p'], pnt['r']))
+                        print()
                         pnt = UGO(pnt, oldEuler)
 
                 # convert z-angle ("roll" angle)
@@ -62,6 +76,7 @@ def execute(oldBooth, newBooth, newCurUtoolNum, oldPnts):
                                                            newUtool)
                         newPnts[pntNum] = world_to_utool(newPnts[pntNum],
                                                          newCurUtool)
+                        
         return dict(newPnts)
 
 def eul2Mat(w, p, r):
@@ -186,7 +201,7 @@ def convertAngles(oldPnt, newEuler, zAngleDeg, center=False, opposite=False):
                 oldZAngle = getZAngle(C)
                 zRotM = eul2Mat(0, 0, -2 * oldZAngle)
                 C = matMult(zRotM, C)
-
+                
         # for center booths, take the same steps described above for opposite
         # booths, except the new z-angle is based on the new dust collector
         # location (zAngleDeg)
@@ -203,6 +218,11 @@ def convertAngles(oldPnt, newEuler, zAngleDeg, center=False, opposite=False):
         w, p, r = mat2Eul(newA)
         return w, p, r
 
+def printMat(M):
+        # prints matrix in readable format
+        for row in M:   
+                print(row)
+
 def getZAngle(M):
         """Returns the z-angle of the projection of a 3D vector on the 2D X-Y
            plane. Rotation matrix "M" must be in UGO angles. Returns angle in
@@ -213,7 +233,23 @@ def getZAngle(M):
         x = M[0][2]
         y = M[1][2]
 
-        # find angle by taking arctangent of X-Y point
+        # find tangent of X-Y point
+        return math.degrees(math.atan2(y, x))
+
+def getZAngleWorld(pnt, Euler):
+        """Performs same function as the getZAngle function, except the input
+           point is a world-frame point.
+        """
+        # convert world-frame Euler angles to UGO rotation matrix
+        pnt1 = UGO(pnt, Euler)
+        M = eul2Mat(pnt1['w'], pnt1['p'], pnt1['r'])
+        
+        # multiply unit vector [0, 0, 1] and rotation matrix to get X-Y
+        # projection points
+        x = M[0][2]
+        y = M[1][2]
+
+        # find tangent of X-Y point
         return math.degrees(math.atan2(y, x))
 
 def frame_to_world(uframePnt, uframe):
@@ -302,13 +338,13 @@ def quadratic(a, b, c):
         return solutions
 
 def UGO(pnt, Euler):
-    """Convert a point's angles to Universal Gun Orientation (UGO) angles.
-    """
-    pnt1 = dict(pnt)
-    rotM = matMult(eul2Mat(pnt1['w'], pnt1['p'], pnt1['r']),
-            eul2Mat(Euler['w'], Euler['p'], Euler['r']))
-    pnt1['w'], pnt1['p'], pnt1['r'] = mat2Eul(rotM)
-    return pnt1
+        """Convert a point's angles to Universal Gun Orientation (UGO) angles.
+        """
+        pnt1 = dict(pnt)
+        rotM = matMult(eul2Mat(pnt1['w'], pnt1['p'], pnt1['r']),
+                eul2Mat(Euler['w'], Euler['p'], Euler['r']))
+        pnt1['w'], pnt1['p'], pnt1['r'] = mat2Eul(rotM)
+        return pnt1
 
 def spfTranslate(oldPnt, oldTbl, newTbl, oldEuler, newEuler, zAngleDeg,
                  pntNum, center=False, opposite=False):
@@ -318,19 +354,44 @@ def spfTranslate(oldPnt, oldTbl, newTbl, oldEuler, newEuler, zAngleDeg,
         oldFi = math.atan2(oldTbl['y'] - oldPnt['y'], oldTbl['x'] - oldPnt['x'])
         oldAlpha = math.radians(getZAngle(eul2Mat(oldPnt['w'], oldPnt['p'],
                                                   oldPnt['r']))) - oldFi
+
+        # print old point values
+        print("Old Point Values:")
+        print("UGO Angles:")
+        print(mat2Eul(eul2Mat(oldPnt['w'], oldPnt['p'], oldPnt['r'])))
+        print("Z-Height:")
+        print(oldPnt['z'] - oldTbl['z'])
+        print("X-Y Distance to Center of TT:")
+        print(math.sqrt(((oldPnt['x'] - oldTbl['x'])**2) + \
+                 ((oldPnt['y'] - oldTbl['y'])**2)))
+        print("Offset Angle (Alpha):")
+        print(oldAlpha)
+        print("Coordinates:")
+        print((oldPnt['x'], oldPnt['y'], oldPnt['z'], oldPnt['w'], oldPnt['p'],
+               oldPnt['r']))
+        print()
         
         # change old z-angle to point on other side of the table
         # if opposite points are necessary (reverse the sign of alpha)
         if opposite:
                 oldAlpha = -oldAlpha
+                print("Old Point Values (Opposite Change):")
+                print("Offset Angle (Alpha):")
+                print(oldAlpha)
+                print()
 
         # initialize new point
         newPnt = {'x': 0, 'y': 0, 'z': 0, 'w': 0, 'p': 0, 'r': 0}
 
         # convert old UGO (Universal
         # Gun Orientation) angles to new UGO angles, then to new world angles
+        print("Old Z-Angle:")
+        print(getZAngle(eul2Mat(oldPnt['w'], oldPnt['p'], oldPnt['r'])))
         newPnt['w'], newPnt['p'], newPnt['r'] = convertAngles(
-                oldPnt, newEuler, zAngleDeg, center, opposite)
+            oldPnt, newEuler, zAngleDeg, center, opposite)
+        print("New Z-Angle:")
+        print(getZAngleWorld(newPnt, newEuler))
+        print()
 
         # get z-height and set E1 value
         newPnt['z'] = oldPnt['z'] - oldTbl['z'] + newTbl['z']
@@ -354,7 +415,7 @@ def spfTranslate(oldPnt, oldTbl, newTbl, oldEuler, newEuler, zAngleDeg,
                 if x:
                         # solve for y
                         y = newTbl['y'] - (angVar * newTbl['x']) + (angVar * x)
-                        
+
                         # compare new and old booth center offset angles
                         newAlpha = math.radians(zAngleDeg) - \
                                    math.atan2(newTbl['y'] - y, newTbl['x'] - x)
@@ -366,4 +427,24 @@ def spfTranslate(oldPnt, oldTbl, newTbl, oldEuler, newEuler, zAngleDeg,
                                 newPnt['x'] = x
                                 newPnt['y'] = y
                                 break
+
+        # print new point values
+        print("New Point Values:")
+        print("UGO Angles:")
+        print(mat2Eul(matMult(
+            eul2Mat(newPnt['w'], newPnt['p'], newPnt['r']),
+            eul2Mat(newEuler['w'], newEuler['p'], newEuler['r']))))
+        print("Z-Height:")
+        print(newPnt['z'] - newTbl['z'])
+        print("X-Y Distance to Center of TT:")
+        print(math.sqrt(((newPnt['x'] - newTbl['x'])**2) + \
+                 ((newPnt['y'] - newTbl['y'])**2)))
+        print("Offset Angle (Alpha):")
+        print(newAlpha)
+        print("New Coordinates:")
+        print((newPnt['x'], newPnt['y'], newPnt['z']))
+        print()
         return newPnt
+
+if __name__ == "__main__":
+        main()
