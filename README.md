@@ -6,7 +6,7 @@ Copying robot programs from one robot to another is easy if they have the same c
 This program is my solution to the above problem. Using a static center point (e.g. the center of a turntable) as a reference point, each robot point can be re-defined based on its location and orientation with respect to this reference point. As long as the workpiece location remains the same with respect to the center point, this method can be used to copy programs from robots with very different environments.
 
 ## Files
-The "program_translator.py" file is the main file, which calls the other files and runs the whole program. The only file not used during normal program execution is "utool_converter.py". This file has many duplicate functions from "point_converter.py" and is used for testing.
+The "program_translator.py" file is the main file, which calls the other files and runs the whole program. The only files not used during normal program execution are "utool_converter.py" and "test_point_converter.py". These files have many duplicate functions from "point_converter.py" and are used for testing.
 
 ## Notes
 This program is designed for Fanuc robots. A similar approach could be used for other types of robots, but some differences must be accounted for that are not included in this code. Additionally, this program was developed for a specific application (thermal spray) and I am using this repository mostly as a backup, so I do not intend modify the code for more general applications. This is also the reason why some variable names may seem unusual to other Fanuc robot users; for example, "booth" and "gun" are application-specific terms.
