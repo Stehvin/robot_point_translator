@@ -3,10 +3,10 @@ import re
 import boothSetupInfo
 
 def formatDict(pntsDict):
-        """Format points dictionary for proper output to .ls files.
-        """
+        # format points dictionary for proper output to .ls files
         for pntNum, pnt in pntsDict.items():
                 for coord in pnt:
+                        pnt[coord] = round(pnt[coord], 3)
                         if pnt[coord] < 1 and pnt[coord] > 0:
                                 pnt[coord] = format(pnt[coord], '.3f')[1:]
                         elif pnt[coord] < 0 and pnt[coord] > -1:
@@ -15,7 +15,7 @@ def formatDict(pntsDict):
                                 pnt[coord] = format(pnt[coord], '.3f')
 
 def pointWrite(outfile, line, pntMatch, pntStatusCount, pntsDict,
-               newCurUtoolNum, newBooth, configStr):
+               newProgUtoolNum, newProgUframeNum, newBooth, configStr):
         """Properly format and write each line after a point has been
            discovered.
         """     
@@ -30,11 +30,12 @@ def pointWrite(outfile, line, pntMatch, pntStatusCount, pntsDict,
         elif pntStatusCount == 1:
                 outfile.write(line)
 
-        # third line - UT must change for different utools, UF = 0,
+        # third line - UT and UF must change for different utools/uframes,
         # configuration string must change to new booth's configuration string
         elif pntStatusCount == 2:
-                newLine = regex_UF.sub("UF : 0,", line)
-                newLine = regex_UT.sub("UT : {},".format(newCurUtoolNum),
+                newLine = regex_UF.sub("UF : {},".format(newProgUframeNum),
+                                       line)
+                newLine = regex_UT.sub("UT : {},".format(newProgUtoolNum),
                                        newLine)
                 newLine = regex_ConStr.sub("CONFIG : '" + configStr + ",",
                                            newLine)
@@ -59,26 +60,34 @@ def pointWrite(outfile, line, pntMatch, pntStatusCount, pntsDict,
                               " deg,\t" + \
                               "R = {:>9}".format(pntsDict[pntNum]['r']) + \
                               " deg")
-                if newBooth in (1, 2, 13, 16):
+                if newBooth in (1, 2, 13, 16, 19):
                         outfile.write(",\n\t" + \
-                                      "E1 = {:>9}".format(
+                                      "E1= {:>9}".format(
                                               pntsDict[pntNum]['e1']) + \
-                                      "deg\n")
+                                      " deg\n")
                 else:
                         outfile.write("\n")
 
-def writeFile(inputPath, outputPath, pntsDict, newCurUtoolNum, newBooth):
+def writeFile(inputPath, outputPath, pntsDict, newProgUtoolNum,
+              newProgUframeNum, newBooth):
         """Write old program to new program file path, using new points
            dictionary.
         """
+        # get new booth's configuration string
+        configStr = boothSetupInfo.boothInfo(newBooth)[5]
+        
+        # convert booth string into actual booth number (e.g. '2a' -> '2')
+        regexNum = re.compile('[0-9]+')
+        try:
+                newBooth = int(regexNum.search(newBooth).group(0))
+        except:
+                pass
+        
         # format point dictionary decimals
         formatDict(pntsDict)
         
         # set up regular expression to match point beginning
         regex_pnt = re.compile('P\[(\d+)(\s?:\s?".*")?\]\s?\{\n')
-
-        # get new booth's configuration string
-        configStr = boothSetupInfo.boothInfo(newBooth)[5]
 
         # initialize beginning of point checker to false
         pntStatus = False
@@ -109,7 +118,8 @@ def writeFile(inputPath, outputPath, pntsDict, newCurUtoolNum, newBooth):
                                 if pntStatus:
                                         pointWrite(outfile, line, pntMatchCopy,
                                                    pntStatusCount, pntsDict,
-                                                   newCurUtoolNum, newBooth,
+                                                   newProgUtoolNum,
+                                                   newProgUframeNum, newBooth,
                                                    configStr)
                                         pntStatusCount += 1
                                 elif line[0:5] == r"/PROG":

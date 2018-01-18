@@ -59,6 +59,8 @@ def boothInfo(booth):
     return utoolCopy, tblCopy, EulerCopy, dustColLoc, dustColAng, configStr
 
 def curUtool(booth, curUtoolNum):
+    """Returns the utool setpoints for the given booth and utool number.
+    """
     # path to excel document
     path = r'C:\Users\Example\UTool Records.xlsx'
 
@@ -83,6 +85,8 @@ def curUtool(booth, curUtoolNum):
     return curUtool
 
 def curUframe(booth, curUframeNum):
+    """Returns the uframe setpoints for the given booth and uframe number.
+    """
     # path to excel document
     path = r'C:\Users\Example\UTool Records.xlsx'
 

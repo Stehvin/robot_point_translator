@@ -1,82 +1,88 @@
 import math
 import boothSetupInfo
+import re
 
 def main():
-        oldPnts = {2: {'uf': 1, 'ut': 1, 'x': -194.62, 'y': -194.41,
-                       'z': 130.67, 'w': 179.08, 'p': 0.08, 'r': 54.64}}
-        oldBooth = 6
-        newBooth = 13
-        newCurUtoolNum = 1
+    oldPnts = {2: {'uf': 1, 'ut': 1, 'x': -194.62, 'y': -194.41, 'z': 130.67,
+                   'w': 179.08, 'p': 0.08, 'r': 54.64, 'inc': False},
+               3: {'uf': 1, 'ut': 1, 'x': 50.00, 'y': 50.00, 'z': 0.00,
+                   'w': 0.00, 'p': 0.00, 'r': 0.00, 'inc': False},
+               4: {'uf': 4, 'ut': 1, 'x': 50.00, 'y': 50.00, 'z': 0.00,
+                   'w': 0.00, 'p': 0.00, 'r': 0.00, 'inc': True},
+               5: {'uf': 0, 'ut': 6, 'x': 50.00, 'y': 50.00, 'z': 0.00,
+                   'w': 0.00, 'p': 0.00, 'r': 0.00, 'inc': True}}
+    oldBooth = 6
+    newBooth = 5
+    newProgUtoolNum = 6
+    newProgUframeNum = 0
     
-        newPnts = execute(oldBooth, newBooth, newCurUtoolNum, oldPnts)
-        print(newPnts)
+    newPnts = execute(oldBooth, newBooth, newProgUtoolNum, newProgUframeNum,
+                      oldPnts)
+    print(newPnts)
 
-def execute(oldBooth, newBooth, newCurUtoolNum, oldPnts):
+def execute(oldBooth, newBooth, newProgUtoolNum, newProgUframeNum, oldPnts):
         """Execute the point conversion program.
         """
         # get parameters from excel document
-        oldUtool, oldTbl, oldEuler, oldDustColLoc, oldDustColAng = \
+        oldNozUtool, oldTbl, oldEuler, oldDustColLoc, oldDustColAng = \
                   boothSetupInfo.boothInfo(oldBooth)[0:5]
-        newUtool, newTbl, newEuler, newDustColLoc, newDustColAng = \
+        newNozUtool, newTbl, newEuler, newDustColLoc, newDustColAng = \
                   boothSetupInfo.boothInfo(newBooth)[0:5]
-        newCurUtool = boothSetupInfo.curUtool(newBooth, newCurUtoolNum)
+
+        # convert booth strings into actual booth numbers
+        # e.g. '2a' -> 2
+        regexNum = re.compile('[0-9]+')
+        try:
+                oldBooth = int(regexNum.search(oldBooth).group(0))
+        except:
+                pass
+        try:
+                newBooth = int(regexNum.search(newBooth).group(0))
+        except:
+                pass
+
+        # get the user-specified utool and uframe setpoints for the new
+        # program
+        newProgUtool = boothSetupInfo.curUtool(newBooth, newProgUtoolNum)
+        newProgUframe = boothSetupInfo.curUframe(newBooth, newProgUframeNum)
+
+        # initialize new points dictionary and incremental motion utool/uframe
+        # "zero-point queue" set
+        newPnts = {}
+        incUfUt = set()
 
         # iterate through points, translating each one
-        newPnts = {}
-        newOppPnts = {}
         for pntNum, pnt in oldPnts.items():
 
-                # convert original point to gun-tip point
-                oldCurUtool = boothSetupInfo.curUtool(oldBooth, pnt['ut'])
-                oldCurUframe = boothSetupInfo.curUframe(oldBooth, pnt['uf'])
-                if oldCurUframe != {'x':0, 'y':0, 'z':0, 'w':0, 'p':0, 'r':0}:
+                # if point is a raster (incremental motion) point, add its
+                # uframe and utool to the zero-point queue
+                if pnt['inc'] == True:
+                        incUfUt.add((pnt['uf'], pnt['ut']))
 
-                        # convert point from uframe to world frame
-                        pnt = frame_to_world(pnt, oldCurUframe)
+                # translate point from old booth to new booth
+                newPnts[pntNum] = convert(
+                    pnt, oldNozUtool, oldTbl, oldEuler, oldDustColLoc, oldBooth,
+                    newProgUtool, newProgUframe, newNozUtool, newTbl, newEuler,
+                    newDustColLoc, newDustColAng)
 
-                if oldCurUtool != oldUtool:
+        # [raster points] translate zero-points in the zero-point queue
+        newZeroPnts = {}
+        for ufut in incUfUt:
+                newZeroPnts[ufut[0]] = {}
+                newZeroPnts[ufut[0]][ufut[1]] = {
+                    'uf': ufut[0], 'ut': ufut[1], 'x': 0.0, 'y': 0.0, 'z': 0.0,
+                    'w': 0.0, 'p': 0.0, 'r': 0.0, 'e1': 0.0}
+                newZeroPnts[ufut[0]][ufut[1]] = convert(
+                    newZeroPnts[ufut[0]][ufut[1]], oldNozUtool, oldTbl,
+                    oldEuler, oldDustColLoc, oldBooth, newProgUtool,
+                    newProgUframe, newNozUtool, newTbl, newEuler, newDustColLoc,
+                    newDustColAng)
 
-                        # convert point from original utool to nozzle utool
-                        # and convert angles to UGO (Universal Gun Orientation)
-                        # angles
-                        pnt = utool_to_world(pnt, oldCurUtool)
-                        pnt = world_to_utool(pnt, oldUtool)
-                        print("Old UF0, Gun-tip UTool Coordinates:")
-                        print((pnt['x'], pnt['y'], pnt['z'], pnt['w'],
-                               pnt['p'], pnt['r']))
-                        print()
-                        pnt = UGO(pnt, oldEuler)
+        # [raster points] convert raster (incremental motion) points
+        for pntNum, pnt in newPnts.items():
+                if pnt['inc'] == True:
+                        incTranslate(pnt, newZeroPnts)
 
-                # convert z-angle ("roll" angle)
-                if oldDustColLoc == newDustColLoc:
-                        center = False
-                        opposite = False
-                        zAngleDeg = getZAngle(eul2Mat(pnt['w'], pnt['p'],
-                                                      pnt['r']))
-                elif (oldDustColLoc == 'R' and newDustColLoc == 'L') or \
-                     (oldDustColLoc == 'L' and newDustColLoc == 'R'):
-                        center = False
-                        opposite = True
-                        zAngleDeg = -getZAngle(eul2Mat(pnt['w'], pnt['p'],
-                                                       pnt['r']))
-                elif newDustColLoc == 'C' or oldDustColLoc == 'C':
-                        center = True
-                        opposite = False
-                        zAngleDeg = newDustColAng
-                
-                # find new point
-                newPnts[pntNum] = spfTranslate(pnt, oldTbl, newTbl, oldEuler,
-                                               newEuler, zAngleDeg, pntNum,
-                                               center, opposite)
-                
-                # convert new gun-tip point to faceplate point
-                # (or different utool point)
-                if newCurUtool != newUtool:
-                        newPnts[pntNum] = utool_to_world(newPnts[pntNum],
-                                                           newUtool)
-                        newPnts[pntNum] = world_to_utool(newPnts[pntNum],
-                                                         newCurUtool)
-                        
         return dict(newPnts)
 
 def eul2Mat(w, p, r):
@@ -178,7 +184,7 @@ def multMatVec(M, vector):
 def matMult(A, B):
         """Multiplies matricies A and B (A*B = C).
         Full disclosure, I did not write this function.
-        Taken from:
+        Stolen from:
         https://stackoverflow.com/questions/10508021/matrix-
         multiplication-in-python
         """
@@ -201,10 +207,7 @@ def convertAngles(oldPnt, newEuler, zAngleDeg, center=False, opposite=False):
                 oldZAngle = getZAngle(C)
                 zRotM = eul2Mat(0, 0, -2 * oldZAngle)
                 C = matMult(zRotM, C)
-                
-        # for center booths, take the same steps described above for opposite
-        # booths, except the new z-angle is based on the new dust collector
-        # location (zAngleDeg)
+
         if center:
                 oldZAngle = getZAngle(C)
                 zRotM = eul2Mat(0, 0, zAngleDeg - oldZAngle)
@@ -237,28 +240,27 @@ def getZAngle(M):
         return math.degrees(math.atan2(y, x))
 
 def getZAngleWorld(pnt, Euler):
-        """Performs same function as the getZAngle function, except the input
-           point is a world-frame point.
-        """
-        # convert world-frame Euler angles to UGO rotation matrix
-        pnt1 = UGO(pnt, Euler)
-        M = eul2Mat(pnt1['w'], pnt1['p'], pnt1['r'])
-        
-        # multiply unit vector [0, 0, 1] and rotation matrix to get X-Y
-        # projection points
-        x = M[0][2]
-        y = M[1][2]
+    pnt1 = UGO(pnt, Euler)
+    M = eul2Mat(pnt1['w'], pnt1['p'], pnt1['r'])
+    # multiply unit vector [0, 0, 1] and rotation matrix to get X-Y
+    # projection points
+    x = M[0][2]
+    y = M[1][2]
 
-        # find tangent of X-Y point
-        return math.degrees(math.atan2(y, x))
+    # find tangent of X-Y point
+    return math.degrees(math.atan2(y, x))
 
 def frame_to_world(uframePnt, uframe):
         """Converts uframe point to a world frame point.
         """
+        worldPnt = dict(uframePnt)
+        
         # convert xyz values to world frame
         rotA = eul2Mat(uframe['w'], uframe['p'], uframe['r'])
         four = rotTransMat(rotA, uframe)
-        worldPnt = multMatVec(four, uframePnt)
+        vec = multMatVec(four, uframePnt)
+        worldPnt['x'], worldPnt['y'], worldPnt['z'] = \
+                vec['x'], vec['y'], vec['z']
 
         # convert wpr angles to world frame angles
         rotB = eul2Mat(uframePnt['w'], uframePnt['p'], uframePnt['r'])
@@ -266,31 +268,53 @@ def frame_to_world(uframePnt, uframe):
                                                                       rotB))
         return worldPnt
 
+def world_to_frame(worldPnt, uframe):
+        """Converts a world point to a user frame point.
+        """
+        ufPnt = dict(worldPnt)
+        
+        # set up translation matrix (uframe setpoints)
+        transM = [[1, 0, 0, -uframe['x']], 
+                  [0, 1, 0, -uframe['y']], 
+                  [0, 0, 1, -uframe['z']],
+                  [0, 0, 0, 1]]
+                
+        # convert xyz values to uframe
+        rotA3 = rotMatInv(eul2Mat(uframe['w'], uframe['p'], uframe['r']))
+        rotA4 = rot_matrix_4x4(rotA3)
+        M = matMult(rotA4, transM)
+        vec = multMatVec(M, worldPnt)
+        ufPnt['x'], ufPnt['y'], ufPnt['z'] = vec['x'], vec['y'], vec['z']
+
+        # convert wpr angles to uframe
+        rotB = eul2Mat(worldPnt['w'], worldPnt['p'], worldPnt['r'])
+        ufPnt['w'], ufPnt['p'], ufPnt['r'] = mat2Eul(matMult(rotA3, rotB))
+        return ufPnt
+        
 def world_to_utool(worldPnt, utool):
         """Converts a world frame point to a utool point.
         """
+        utoolPnt = dict(worldPnt)
+        
         # set up world-coord matrix and translate by utool xyz setpoints
         rotM = eul2Mat(worldPnt['w'], worldPnt['p'], worldPnt['r'])
         M4x4 = rotTransMat(rotM, worldPnt)
-        utoolPnt = multMatVec(M4x4, utool)
+        vec = multMatVec(M4x4, utool)
+        utoolPnt['x'], utoolPnt['y'], utoolPnt['z'] = \
+                vec['x'], vec['y'], vec['z']
 
         # change world-coord angles to utool angles
         rotA = eul2Mat(worldPnt['w'], worldPnt['p'], worldPnt['r'])
         rotB = eul2Mat(utool['w'], utool['p'], utool['r'])
         utoolPnt['w'], utoolPnt['p'], utoolPnt['r'] = mat2Eul(matMult(rotA,
                                                                       rotB))
-
-        # assign E1 coordinate, if it exists
-        try:
-                utoolPnt['e1'] = worldPnt['e1']
-        except:
-                pass
         return utoolPnt
 
 def utool_to_world(utoolPnt, utool):
         """Converts a utool point to a world coordinate point.
         """
         utoolCopy = dict(utool)
+        worldPnt = dict(utoolPnt)
 
         # change utool angles to world angles
         rotA = eul2Mat(utoolPnt['w'], utoolPnt['p'], utoolPnt['r'])
@@ -306,17 +330,11 @@ def utool_to_world(utoolPnt, utool):
         # set up utool matrix
         rotM = eul2Mat(utoolPnt['w'], utoolPnt['p'], utoolPnt['r'])
         M4x4 = rotTransMat(rotM, utoolPnt)
-
-        worldPnt = multMatVec(M4x4, utoolCopy)
-        worldPnt['w'] = utoolPnt['w']
-        worldPnt['p'] = utoolPnt['p']
-        worldPnt['r'] = utoolPnt['r']
-
-        # assign E1 coordinate, if it exists
-        try:
-                worldPnt['e1'] = utoolPnt['e1']
-        except:
-                pass
+        vec = multMatVec(M4x4, utoolCopy)
+        worldPnt['x'], worldPnt['y'], worldPnt['z'] = \
+                vec['x'], vec['y'], vec['z']
+        worldPnt['w'], worldPnt['p'], worldPnt['r'] = \
+                utoolPnt['w'], utoolPnt['p'], utoolPnt['r']
         return worldPnt
 
 def quadratic(a, b, c):
@@ -342,56 +360,108 @@ def UGO(pnt, Euler):
         """
         pnt1 = dict(pnt)
         rotM = matMult(eul2Mat(pnt1['w'], pnt1['p'], pnt1['r']),
-                eul2Mat(Euler['w'], Euler['p'], Euler['r']))
+                       eul2Mat(Euler['w'], Euler['p'], Euler['r']))
         pnt1['w'], pnt1['p'], pnt1['r'] = mat2Eul(rotM)
         return pnt1
 
+def convert25ttcp(pnt, oldTbl):
+        """Converts the turntable centerpoint (TTCP) x-value, when the old
+           booth is 25. The new TTCP x-value is based upon the E1-value of the
+           current point.
+        """
+        oldTbl1 = dict(oldTbl)
+        oldTbl1['x'] = 1012.072 - (2*(-582.815 - pnt['e1']))
+        return oldTbl1
+
+def incTranslate(pnt, newZeroPnts):
+        """Translates raster (incremental motion) points using the old booth's
+           zero-point, which was previously translated to the new booth.
+        """
+        pnt['x'] -= newZeroPnts[pnt['olduf']][pnt['oldut']]['x']
+        pnt['y'] -= newZeroPnts[pnt['olduf']][pnt['oldut']]['y']
+        pnt['z'] -= newZeroPnts[pnt['olduf']][pnt['oldut']]['z']
+        pnt['w'] -= newZeroPnts[pnt['olduf']][pnt['oldut']]['w']
+        pnt['p'] -= newZeroPnts[pnt['olduf']][pnt['oldut']]['p']
+        pnt['r'] -= newZeroPnts[pnt['olduf']][pnt['oldut']]['r']
+        pnt['e1'] = 0.00
+        return None
+
+def convert(pnt, oldNozUtool, oldTbl, oldEuler, oldDustColLoc, oldBooth,
+            newProgUtool, newProgUframe, newNozUtool, newTbl, newEuler,
+            newDustColLoc, newDustColAng):
+        """Converts old booth point to UGO, nozzle utool, world frame point.
+           Then, runs the spfTranslate function which translates the point to
+           a new booth. After that, this function changes the point to a utool,
+           uframe point.
+        """
+        # get the original program's utool and uframe info
+        oldProgUtool = boothSetupInfo.curUtool(oldBooth, pnt['ut'])
+        oldProgUframe = boothSetupInfo.curUframe(oldBooth, pnt['uf'])
+        
+        # convert point from uframe to world frame
+        pnt = frame_to_world(pnt, oldProgUframe)
+
+        # convert point from original utool to nozzle utool and convert
+        # angles to UGO (Universal Gun Orientation) angles
+        pnt = utool_to_world(pnt, oldProgUtool)
+        pnt = world_to_utool(pnt, oldNozUtool)
+        pnt = UGO(pnt, oldEuler)
+
+        # convert z-angle ("roll" angle)
+        if oldDustColLoc == newDustColLoc:
+                center = False
+                opposite = False
+                zAngleDeg = getZAngle(eul2Mat(pnt['w'], pnt['p'], pnt['r']))
+        elif (oldDustColLoc == 'R' and newDustColLoc == 'L') or \
+             (oldDustColLoc == 'L' and newDustColLoc == 'R'):
+                center = False
+                opposite = True
+                zAngleDeg = -getZAngle(eul2Mat(pnt['w'], pnt['p'], pnt['r']))
+        elif newDustColLoc == 'C' or oldDustColLoc == 'C':
+                center = True
+                opposite = False
+                zAngleDeg = newDustColAng
+
+        # convert turntable centerpoint x-value for booth 25
+        if oldBooth == 25:
+                oldTbl = convert25ttcp(pnt, oldTbl)
+
+        # find new point
+        newPnt = spfTranslate(pnt, oldTbl, newTbl, oldEuler, newEuler,
+                              zAngleDeg, center, opposite)
+                
+        # convert new point from nozzle utool to user-specified utool
+        newPnt = utool_to_world(newPnt, newNozUtool)
+        newPnt = world_to_utool(newPnt, newProgUtool)
+
+        # convert new point from world frame to user-specified frame
+        newPnt = world_to_frame(newPnt, newProgUframe)
+        return dict(newPnt)
+
 def spfTranslate(oldPnt, oldTbl, newTbl, oldEuler, newEuler, zAngleDeg,
-                 pntNum, center=False, opposite=False):
-        """Translate point from old booth to new booth.
+                 center=False, opposite=False):
+        """Translate UGO, nozzle utool, world frame point from old booth to
+           new booth.
         """
         # get original booth center offset angle (alpha)
         oldFi = math.atan2(oldTbl['y'] - oldPnt['y'], oldTbl['x'] - oldPnt['x'])
         oldAlpha = math.radians(getZAngle(eul2Mat(oldPnt['w'], oldPnt['p'],
                                                   oldPnt['r']))) - oldFi
-
-        # print old point values
-        print("Old Point Values:")
-        print("UGO Angles:")
-        print(mat2Eul(eul2Mat(oldPnt['w'], oldPnt['p'], oldPnt['r'])))
-        print("Z-Height:")
-        print(oldPnt['z'] - oldTbl['z'])
-        print("X-Y Distance to Center of TT:")
-        print(math.sqrt(((oldPnt['x'] - oldTbl['x'])**2) + \
-                 ((oldPnt['y'] - oldTbl['y'])**2)))
-        print("Offset Angle (Alpha):")
-        print(oldAlpha)
-        print("Coordinates:")
-        print((oldPnt['x'], oldPnt['y'], oldPnt['z'], oldPnt['w'], oldPnt['p'],
-               oldPnt['r']))
-        print()
         
         # change old z-angle to point on other side of the table
         # if opposite points are necessary (reverse the sign of alpha)
         if opposite:
                 oldAlpha = -oldAlpha
-                print("Old Point Values (Opposite Change):")
-                print("Offset Angle (Alpha):")
-                print(oldAlpha)
-                print()
 
         # initialize new point
-        newPnt = {'x': 0, 'y': 0, 'z': 0, 'w': 0, 'p': 0, 'r': 0}
+        newPnt = dict(oldPnt)
+        newPnt['olduf'], newPnt['oldut'] = newPnt['uf'], newPnt['ut']
+        del newPnt['uf'], newPnt['ut']
 
         # convert old UGO (Universal
         # Gun Orientation) angles to new UGO angles, then to new world angles
-        print("Old Z-Angle:")
-        print(getZAngle(eul2Mat(oldPnt['w'], oldPnt['p'], oldPnt['r'])))
         newPnt['w'], newPnt['p'], newPnt['r'] = convertAngles(
-            oldPnt, newEuler, zAngleDeg, center, opposite)
-        print("New Z-Angle:")
-        print(getZAngleWorld(newPnt, newEuler))
-        print()
+                oldPnt, newEuler, zAngleDeg, center, opposite)
 
         # get z-height and set E1 value
         newPnt['z'] = oldPnt['z'] - oldTbl['z'] + newTbl['z']
@@ -415,7 +485,7 @@ def spfTranslate(oldPnt, oldTbl, newTbl, oldEuler, newEuler, zAngleDeg,
                 if x:
                         # solve for y
                         y = newTbl['y'] - (angVar * newTbl['x']) + (angVar * x)
-
+                        
                         # compare new and old booth center offset angles
                         newAlpha = math.radians(zAngleDeg) - \
                                    math.atan2(newTbl['y'] - y, newTbl['x'] - x)
@@ -427,24 +497,7 @@ def spfTranslate(oldPnt, oldTbl, newTbl, oldEuler, newEuler, zAngleDeg,
                                 newPnt['x'] = x
                                 newPnt['y'] = y
                                 break
-
-        # print new point values
-        print("New Point Values:")
-        print("UGO Angles:")
-        print(mat2Eul(matMult(
-            eul2Mat(newPnt['w'], newPnt['p'], newPnt['r']),
-            eul2Mat(newEuler['w'], newEuler['p'], newEuler['r']))))
-        print("Z-Height:")
-        print(newPnt['z'] - newTbl['z'])
-        print("X-Y Distance to Center of TT:")
-        print(math.sqrt(((newPnt['x'] - newTbl['x'])**2) + \
-                 ((newPnt['y'] - newTbl['y'])**2)))
-        print("Offset Angle (Alpha):")
-        print(newAlpha)
-        print("New Coordinates:")
-        print((newPnt['x'], newPnt['y'], newPnt['z']))
-        print()
         return newPnt
 
 if __name__ == "__main__":
-        main()
+    main()

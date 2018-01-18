@@ -2,6 +2,7 @@ import re
 
 def makePntsDict(path):
         # set up regular expressions
+        regex_inc = re.compile('\s{0,3}\d{1,4}:[JL]\sP\[(\d+).+INC')
         regex_pnt = re.compile('P\[(\d+)(\s?:\s?".*")?\]\s?\{\n')
         regex_UT = re.compile('UT\s:\s(\d{0,2}),')
         regex_UF = re.compile('UF\s:\s(\d{0,2}),')
@@ -13,13 +14,19 @@ def makePntsDict(path):
         regex_r = re.compile('R\s=\s+(-?\d{0,4}\.\d{2,3})')
         regex_e1 = re.compile('E1=\s+(-?\d{0,4}\.\d{2,3})')
 
-        # initialize points dictionary
+        # initialize points dictionary and raster points set
         pntsDict = {}
+        incPnts = set()
 
         # open input file (.ls format)
         with open(path, 'r') as f:
                 lines = f.readlines()
                 for lineIndex, line in enumerate(lines, 1):
+
+                        # find all raster (incremental motion) points
+                        if regex_inc.search(line):
+                                incPnts.add(
+                                        int(regex_inc.search(line).group(1)))
                         
                         # if line is the beginning of a point, get the point
                         # number and put point values into a dictionary
@@ -59,4 +66,10 @@ def makePntsDict(path):
                                 # points dictionary
                                 pntsDict[int(pntNum)] = pntDict
 
+        # check which points are raster (incremental motion) points
+        for pntNum in pntsDict:
+                if pntNum in incPnts:
+                        pntsDict[pntNum]['inc'] = True
+                else:
+                        pntsDict[pntNum]['inc'] = False
         return pntsDict

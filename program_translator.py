@@ -8,9 +8,10 @@ INPUT INFORMATION
 
 inputPath = r"C:\Users\Example\test.ls"
 outputPath = r"C:\Users\Example\OutputTest.ls"
-oldBooth = 10
-newBooth = 11
-newProgUtoolNum = 1
+oldBooth = 6
+newBooth = 5
+newProgUtoolNum = 6
+newProgUframeNum = 0
 
 '''
 END OF INPUT INFORMATION
@@ -21,8 +22,8 @@ pntsDict = get_points.makePntsDict(inputPath)
 
 # modify points from old booth to new booth
 pntsDict = point_converter.execute(oldBooth, newBooth, newProgUtoolNum,
-                                   pntsDict)
+                                   newProgUframeNum, pntsDict)
 
 # output file with new points
 write_points.writeFile(inputPath, outputPath, pntsDict, newProgUtoolNum,
-                       newBooth)
+                       newProgUframeNum, newBooth)
