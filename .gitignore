@@ -3,3 +3,5 @@
 *.tmp
 *.bat
 *.ls
+utool_converter.py
+test_point_converter.py
