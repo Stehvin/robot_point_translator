@@ -7,8 +7,8 @@ import write_points
 INPUT INFORMATION
 '''
 
-inputPath = r"C:\Users\Example\test.ls"
-outputPath = r"C:\Users\Example\OutputTest.ls"
+inputPath = r"C:\Users\Example\inTestProg.ls"
+outputPath = r"C:\Users\Example\outTestProg.ls"
 oldBooth = 6
 newBooth = 5
 newProgUtoolNum = 6

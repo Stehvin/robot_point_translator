@@ -21,7 +21,7 @@ def pointWrite(outfile, line, pntMatch, pntStatusCount, pntsDict,
                newProgUtoolNum, newProgUframeNum, newBooth, configStr):
     """Properly format and write each line after a point has been
     discovered.
-    """
+    """     
     # Set up Uframe, Utool, and configuration string regular
     # expressions.
     regex_UT = re.compile('UT\s:\s(\d{0,2}),')
@@ -34,7 +34,7 @@ def pointWrite(outfile, line, pntMatch, pntStatusCount, pntsDict,
     elif pntStatusCount == 1:
         outfile.write(line)
 
-    # Third line - UT and UF must change for different utools/uframes,
+    # Third line - UT and UF must change for different Utools/Uframes,
     # and the configuration string must change to new booth's
     # configuration string.
     elif pntStatusCount == 2:
@@ -57,14 +57,14 @@ def pointWrite(outfile, line, pntMatch, pntStatusCount, pntsDict,
                       + " deg,\t" + "R = {:>9}".format(pntsDict[pntNum]['r'])
                       + " deg")
         if newBooth in (1, 2, 13, 16, 19):
-            outfile.write(",\n\t" + "E1= {:>9}".format(
-                pntsDict[pntNum]['e1']) + " deg\n")
+            outfile.write(",\n\t" + "E1= {:>9}".format(pntsDict[pntNum]['e1'])
+                          + " deg\n")
         else:
             outfile.write("\n")
 
 
 def writeFile(inputPath, outputPath, pntsDict, newProgUtoolNum,
-              newProgUframeNum, newBooth):
+          newProgUframeNum, newBooth):
     """Write old program to new program file path, using new points
     dictionary.
     """
@@ -94,7 +94,7 @@ def writeFile(inputPath, outputPath, pntsDict, newProgUtoolNum,
     with open(inputPath, 'r') as infile:
         with open(outputPath, 'w') as outfile:
             for line in infile:
-                    
+                
                 # Search line for beginning of point.
                 pntMatch = regex_pnt.search(line)
                 if pntMatch:
@@ -106,15 +106,14 @@ def writeFile(inputPath, outputPath, pntsDict, newProgUtoolNum,
                 elif line == "};\n":
                     pntStatus = False
                 
-                # Execute pointWrite function if line is within
-                # a point.
+                # Execute pointWrite function if line is within a point.
                 if pntStatus:
                     pointWrite(outfile, line, pntMatchCopy, pntStatusCount,
                                pntsDict, newProgUtoolNum, newProgUframeNum,
                                newBooth, configStr)
                     pntStatusCount += 1
-                
-                # Search for program name.
+
+                # Change program name.
                 elif line[0:5] == r"/PROG":
                     outfile.write("/PROG  " + newProgName + "\n")
                 else:

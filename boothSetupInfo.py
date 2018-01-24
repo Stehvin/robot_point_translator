@@ -2,11 +2,11 @@ from openpyxl import load_workbook
 
 
 def boothInfo(booth):
-    """Find the parameters for a specific booth, which are listed in
-       the excel document described by path (below).
+    """Find the parameters for a specific booth, which are listed in the
+    excel document described by path (below).
     """
 
-    # Get path to excel document.
+    # Input path to excel document.
     path = r'C:\Users\Example\UTool Records.xlsx'
 
     # Load excel workbook.
@@ -59,10 +59,9 @@ def boothInfo(booth):
 
 
 def curUtool(booth, curUtoolNum):
-    """Returns the utool setpoints for the given booth and utool
-    number.
+    """Returns the utool setpoints for the given booth and utool number.
     """
-    # Get path to excel document.
+    # Input path to excel document.
     path = r'C:\Users\Example\UTool Records.xlsx'
 
     # Load excel workbook.
@@ -90,7 +89,7 @@ def curUframe(booth, curUframeNum):
     """Returns the uframe setpoints for the given booth and uframe
     number.
     """
-    # Get path to excel document.
+    # Input path to excel document.
     path = r'C:\Users\Example\UTool Records.xlsx'
 
     # Load excel workbook.
